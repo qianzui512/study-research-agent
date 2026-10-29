@@ -1,0 +1,15 @@
+{
+  "_comment": "把这个片段粘到 Cursor / Claude Desktop 的 MCP 配置文件里，即可让任意 MCP 客户端直接使用本项目的 4 个技能。注意把 <PROJECT_DIR> 换成你自己的项目绝对路径（Windows 下反斜杠要写成双反斜杠）。",
+
+  "mcpServers": {
+    "study-research-agent": {
+      "command": "<PROJECT_DIR>\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "<PROJECT_DIR>",
+      "env": {
+        "PYTHONPATH": "<PROJECT_DIR>",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}

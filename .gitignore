@@ -1,0 +1,37 @@
+# ---- Python ----
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# ---- 密钥（绝对不能提交）----
+.env
+.env.local
+*.key
+
+# ---- 工具缓存 ----
+.cache/
+.slidep/
+.ipynb_checkpoints/
+
+# ---- 非代码附属文件（只留代码、配置、数据、README）----
+# 仓库定位：能跑起来的工程本体。报告 / PPT / 配图 / 过程文档留在本地。
+/StudyScout答辩/
+/docs/
+/report_assets/
+/实验1-实验报告.docx
+/实验1-实验报告模版.docx
+/演示脚本.md
+/跑通指南.md
+/项目工具与知识点总结.md
+/GitHub提交清单.md
+/scripts/make_report_figures.py
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

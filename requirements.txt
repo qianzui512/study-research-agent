@@ -1,0 +1,8 @@
+# 依赖清单 —— 用 `pip install -r requirements.txt` 一键安装
+mcp>=1.0            # Model Context Protocol 官方 Python SDK（服务端 + 客户端）
+openai>=1.0         # OpenAI 兼容的 LLM 客户端（DeepSeek / Qwen / Moonshot 均兼容）
+httpx>=0.27         # HTTP 客户端，用于网页抓取
+beautifulsoup4>=4.12  # HTML 解析，用于抠网页正文
+pypdf>=4.0          # PDF 文本提取
+python-dotenv>=1.0  # 从 .env 读取配置
+fpdf2>=2.7          # 仅用于生成演示用的样例 PDF（运行时可不需要）
