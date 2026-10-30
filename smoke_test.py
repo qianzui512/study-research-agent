@@ -24,11 +24,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-try:  # Windows 控制台默认 GBK，中文输出可能报 UnicodeEncodeError
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:  # pragma: no cover
-    pass
+# Windows 控制台默认是 GBK（cp936）。遇到编不出的字符（如 ✓ / ⚠）会直接抛
+# UnicodeEncodeError 中断程序。这里只放宽错误策略、不强制改编码 ——
+# 强制 utf-8 在 GBK 终端里会把中文显示成乱码，反而不如原样输出。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except Exception:  # pragma: no cover
+        pass
 
 from dotenv import load_dotenv  # noqa: E402
 
@@ -255,7 +258,7 @@ async def stage6_end_to_end(web_url: str) -> bool:
             print(f"  [轮 {data['step']}] ← {data['tool']} {flag}: "
                   f"{' '.join(data['preview'].split())[:100]}")
         elif kind == "final_answer":
-            print(f"  [轮 {data['step']}] ✓ 输出最终答案")
+            print(f"  [轮 {data['step']}] √ 输出最终答案")
         elif kind == "max_steps_reached":
             print(f"  [!] 达到最大轮数 {data['steps']}")
 

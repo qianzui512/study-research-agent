@@ -19,6 +19,14 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
+# Windows 控制台默认是 GBK（cp936），遇到编不出的字符会抛 UnicodeEncodeError。
+# 只放宽错误策略、不强制改编码，避免在 GBK 终端里把中文变成乱码。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except Exception:  # pragma: no cover
+        pass
+
 
 async def list_tools_only() -> None:
     """不依赖 LLM，直接连上 MCP 服务端把工具清单打出来。"""

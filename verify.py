@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 import statistics
 import subprocess
@@ -23,11 +24,41 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+# Windows 控制台默认是 GBK（cp936），遇到编不出的字符会抛 UnicodeEncodeError。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except Exception:  # pragma: no cover
+        pass
+
 CSV_PATH = ROOT / "data" / "sample_grades.csv"
 PDF_PATH = ROOT / "data" / "sample_paper.pdf"
 TAMPER_PATH = ROOT / "data" / "_verify_tampered.csv"
 
 results: list[tuple[str, bool, str]] = []
+
+# Windows 中文环境下 subprocess 的坑（实测于 cmd.exe / 代码页 936）：
+# MCP 服务端由 SDK 强制输出 UTF-8，而父进程 text=True 时默认按 locale
+# （cp936 = GBK）解码，读线程抛 UnicodeDecodeError 后 proc.stdout 变成 None，
+# 表现为 "'NoneType' object has no attribute 'splitlines'"。
+# 所以父子两端都必须锁死 UTF-8，且解码留 errors="replace" 兜底。
+CHILD_ENV = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+
+
+def run_child(args: list[str], timeout: int = 60, **kwargs: Any) -> subprocess.CompletedProcess:
+    """以 UTF-8 与子进程通信，避免 Windows 中文环境下的解码崩溃。"""
+    return subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=CHILD_ENV,
+        cwd=str(ROOT),
+        timeout=timeout,
+        **kwargs,
+    )
+
 
 
 def record(name: str, passed: bool, detail: str = "") -> None:
@@ -70,17 +101,17 @@ def check_raw_mcp_protocol() -> None:
     ]) + "\n"
 
     try:
-        proc = subprocess.run(
-            [sys.executable, "-m", "mcp_server.server"],
-            input=payload, capture_output=True, text=True, timeout=60, cwd=str(ROOT),
-        )
+        proc = run_child([sys.executable, "-m", "mcp_server.server"], timeout=60, input=payload)
     except subprocess.TimeoutExpired:
         record("服务端响应裸 JSON-RPC", False, "超时")
         return
 
-    lines = [ln for ln in proc.stdout.splitlines() if ln.strip().startswith("{")]
+    stdout = proc.stdout or ""
+    lines = [ln for ln in stdout.splitlines() if ln.strip().startswith("{")]
     if not lines:
-        record("服务端响应裸 JSON-RPC", False, f"没有收到 JSON 响应。stderr: {proc.stderr[:200]}")
+        record("服务端响应裸 JSON-RPC", False,
+               f"没有收到 JSON 响应。stdout 前 200 字: {stdout[:200]!r} / "
+               f"stderr 前 200 字: {(proc.stderr or '')[:200]!r}")
         return
 
     record("服务端响应裸 JSON-RPC", True, f"收到 {len(lines)} 条 JSON-RPC 消息")
@@ -260,13 +291,14 @@ def check_test_suites() -> None:
     for script, label in [("tests/test_skills.py", "技能单测"),
                           ("tests/test_agent_loop.py", "编排集成测试"),
                           ("tests/test_thinking_mode.py", "思考模式回归")]:
-        proc = subprocess.run(
-            [sys.executable, script], capture_output=True, text=True, cwd=str(ROOT), timeout=180,
-        )
-        lines = proc.stdout.splitlines()
+        proc = run_child([sys.executable, script], timeout=180)
+        # unittest 把 "Ran N tests" 写在 stderr，自定义脚本写在 stdout，
+        # 两路都要看，否则明明跑过了却摘不出摘要行。
+        combined = (proc.stdout or "") + (proc.stderr or "")
+        lines = combined.splitlines()
         summary = next((ln for ln in lines if ln.startswith("Ran ")), None) \
             or next((ln for ln in lines if ln.startswith("结果：")), None)
-        record(f"{label} 全过", proc.returncode == 0, summary or proc.stdout[-150:])
+        record(f"{label} 全过", proc.returncode == 0, summary or combined[-150:])
 
 
 async def main() -> None:

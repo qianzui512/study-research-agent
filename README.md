@@ -210,8 +210,27 @@ python run_agent.py                # 进入交互模式，输入 exit 退出
 [错误] 模型不存在（HTTP 404）。请检查 .env 里的 LLM_MODEL 是否拼写正确 …
 ```
 
-需要看完整堆栈时加 `--debug`：
+**Windows 中文环境特有的编码坑**（在 cmd 里跑最容易遇到）：
 
+```
+UnicodeDecodeError: 'gbk' codec can't decode byte 0x80 in position 324
+AttributeError: 'NoneType' object has no attribute 'splitlines'
+```
+
+第二条是第一条的连锁反应——`subprocess` 的读线程解码崩溃后，`proc.stdout` 变成 `None`，
+于是下一行 `proc.stdout.splitlines()` 报 `NoneType`。
+
+根因：MCP 服务端由官方 SDK 强制输出 UTF-8，而中文 Windows 上 `subprocess` 在
+`text=True` 时默认按 locale（cp936 = GBK）解码，遇到 UTF-8 的中文字节就炸。
+
+本项目已修复：`verify.py` 里所有子进程调用统一走 `run_child()`，父子两端都锁死
+UTF-8（`encoding="utf-8"` + 子进程 `PYTHONIOENCODING=utf-8`）。另外四个入口脚本都加了
+`reconfigure(errors="replace")`，避免打印 `√` 之类的符号时被 GBK 卡住。
+
+> 如果你自己写类似的子进程调用，记住这条：**跨进程传文本，编码必须显式指定，
+> 不能依赖 locale。** Windows 上尤其如此。
+
+需要看完整堆栈时加 `--debug`：
 ```bash
 python run_agent.py "你的问题" --debug
 ```

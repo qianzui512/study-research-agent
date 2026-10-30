@@ -27,6 +27,13 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+# Windows 控制台默认是 GBK（cp936），遇到编不出的字符会抛 UnicodeEncodeError。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except Exception:  # pragma: no cover
+        pass
+
 from agent.loop import StudyScout  # noqa: E402
 
 DATA = ROOT / "data"

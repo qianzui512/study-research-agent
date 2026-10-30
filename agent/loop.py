@@ -232,7 +232,7 @@ async def ask(user_input: str, verbose: bool = True) -> dict[str, Any]:
             flag = "错误" if data["is_error"] else "成功"
             print(f"[轮次 {data['step']}] ← {data['tool']} {flag}: {data['preview'][:120]}...")
         elif kind == "final_answer":
-            print(f"[轮次 {data['step']}] ✓ 生成最终答案")
+            print(f"[轮次 {data['step']}] √ 生成最终答案")
 
     scout = StudyScout(on_event=printer)
     return await scout.run(user_input)
